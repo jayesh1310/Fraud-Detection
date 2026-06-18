@@ -1,0 +1,22 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment
+.env
+
+# Pipeline output (written at runtime into the fraud-data Docker volume)
+output/
+checkpoints/
+*.parquet
+
+# Docker
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.iml

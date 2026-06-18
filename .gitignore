@@ -1,0 +1,9 @@
+*.csv
+*.parquet
+.ipynb_checkpoints/
+fraud_rf_model/
+temp_flagged/
+training_data/
+__pycache__/
+*.log
+.DS_Store
