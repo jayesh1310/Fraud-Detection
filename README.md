@@ -1,37 +1,67 @@
-# Financial Transaction Fraud Detection System
+# Real-Time Financial Fraud Detection System
 
-This project is a machine learning pipeline for detecting fraudulent financial transactions using PySpark. It trains a Random Forest Classifier on the PaySim dataset to identify suspicious activities like fraudulent transfers and cash-outs.
+This project is an end-to-end Big Data machine learning pipeline for detecting fraudulent financial transactions in real-time. It uses a **custom synthetic data generator** to simulate a live stream of transactions, which are brokered by **Apache Kafka** and processed continuously by an **Apache Spark (PySpark) Structured Streaming** application powered by a **Random Forest Machine Learning model**.
 
-## Overview
+## Architecture Overview
 
-The system uses PySpark's MLlib to handle large-scale financial data efficiently. The main script trains a model on pre-engineered Parquet files, focusing on class imbalance and evaluating the model's performance via multiple metrics (AUC-ROC, F1 Score, Precision, Recall).
+```text
+[Synthetic Data Generator] (Faker)
+      │ (10 transactions / sec)
+      ▼
+[Kafka Producer]  ──►  Kafka Topic: transactions
+                                │
+                                ▼
+                      [Spark ML Consumer]
+                                │
+                     Feature Engineering & 
+                 Random Forest Classification
+                                │
+                                ▼
+                     [Parquet Storage Sink]
+                        (Fraud Flagged)
+```
 
-## Files and Structure
+The system is fully containerized using Docker Compose, orchestrating Zookeeper, Kafka, Spark Master/Worker, the Producer, and the Consumer.
 
-- `eda_paysim.ipynb`: Exploratory Data Analysis notebook to analyze the PaySim dataset.
-- `feature_engineering.py`: Script to process the raw dataset and extract meaningful features.
-- `train_model.py`: PySpark script that trains the Random Forest model and evaluates it.
-- `train_model_pipeline.py`: Pipeline for end-to-end model training.
-- `fraud_rf_model/`: Directory where the trained PySpark Random Forest model is saved.
-- `training_data/`: Contains intermediate data/Parquet files.
+## Project Structure
 
-## Features Used
+- `fraud-detection-pipeline-main/`: Contains the core Docker architecture and streaming scripts.
+  - `producer/transaction_producer.py`: Generates the live synthetic credit card transactions.
+  - `consumer/spark_consumer_ml.py`: The PySpark Structured Streaming consumer that loads the ML model and scores transactions in real-time.
+- `train_model_pipeline.py`: The PySpark script used to train the Random Forest ML Pipeline (StringIndexer, OneHotEncoder, VectorAssembler, StandardScaler, RandomForestClassifier) on a snapshot of the live data.
+- `fraud_rf_model/`: The exported PySpark PipelineModel used by the consumer to make real-time predictions.
 
-The model uses the following engineered features to detect fraud:
-- Transaction amount
-- Old and new balances of origin and destination accounts
-- Balance differences
-- Discrepancies (errors) in expected balances
+## Machine Learning Integration
 
-## Usage
+Unlike static batch-processing projects (e.g. using pre-downloaded datasets like PaySim), this project features a model trained directly on a live stream snapshot. This guarantees 100% schema alignment between training and deployment.
 
-1. **Setup**: Ensure you have Java, Spark, and PySpark installed. On Windows, `winutils.exe` is required.
-2. **Train Model**: Run the training script:
+The Spark ML Pipeline processes the following features:
+- `amount` (StandardScaled)
+- `merchant_category` (One-Hot Encoded)
+- `amount_bucket` (StringIndexed)
+- `hour_of_day` & `is_night_transaction`
+- `geo_risk_score` (Derived from Location)
+
+## Usage & Live Demo
+
+Ensure Docker Desktop is running, then follow these steps:
+
+1. **Start the Pipeline**:
    ```bash
-   python train_model.py
+   cd fraud-detection-pipeline-main
+   docker compose up -d
    ```
-3. **Deploy**: The model is saved to the `fraud_rf_model` folder and can be loaded for real-time predictions in a streaming pipeline (e.g., `spark_consumer_ml.py`).
-
-## Evaluation
-
-The model provides metrics such as AUC-ROC, Precision, and Recall, focusing specifically on minimizing False Negatives (missed frauds) while maintaining a low false alarm rate.
+2. **Watch the Data Generation**:
+   ```bash
+   docker logs fraud-producer -f
+   ```
+3. **Monitor the Spark ML Consumer**:
+   ```bash
+   docker logs fraud-consumer -f
+   ```
+4. **View the Spark Dashboard**: Navigate to `http://localhost:4040` in your web browser to watch the streaming micro-batches in real-time.
+5. **Analyze the Caught Fraud**: You can copy the Parquet output from the Docker volume to your local machine to view transactions where `flagged_fraud` is True:
+   ```bash
+   docker cp fraud-consumer:/data/output/fraud_flagged ./temp_flagged
+   python -c "import pandas as pd; import glob; files=glob.glob('./temp_flagged/*.parquet'); df=pd.concat([pd.read_parquet(f) for f in files]); print(df[df['flagged_fraud']==True][['transaction_id', 'amount', 'merchant_category', 'is_fraud', 'flagged_fraud']].tail(10))"
+   ```
