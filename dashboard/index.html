@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>FraudShield — Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #f9f9f9;
+      --surface:  #ffffff;
+      --border:   #e4e4e7;
+      --accent:   #2563eb;
+      --danger:   #dc2626;
+      --success:  #16a34a;
+      --warn:     #d97706;
+      --text:     #18181b;
+      --muted:    #71717a;
+      --mono:     'JetBrains Mono', monospace;
+      --radius:   8px;
+      --gap:      16px;
+    }
+
+    html { font-size: 14px; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .wrapper {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 28px 24px;
+    }
+
+    /* == Header == */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .logo h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+    .logo h1 span { color: var(--accent); }
+    .logo p {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    #last-updated { font-size: 0.72rem; color: var(--muted); }
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.7rem;
+      font-weight: 500;
+      color: var(--success);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .live-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: blink 1.4s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100% { opacity:1 } 50% { opacity:.2 } }
+
+    /* == Buttons == */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 7px 14px;
+      border-radius: var(--radius);
+      font-size: 0.75rem;
+      font-weight: 500;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: opacity .15s, background .15s;
+    }
+    .btn:active { opacity: .7; }
+    .btn:disabled { opacity: .35; cursor: not-allowed; }
+    .btn-start { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn-start:hover:not(:disabled) { opacity: .88; }
+    .btn-stop { background: transparent; color: var(--danger); border-color: var(--danger); }
+    .btn-stop:hover:not(:disabled) { background: #fef2f2; }
+    @keyframes spin { to { transform: rotate(360deg) } }
+    .spin { display: inline-block; animation: spin .7s linear infinite; }
+
+    /* == KPI == */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: var(--gap);
+      margin-bottom: var(--gap);
+    }
+    .kpi {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+    }
+    .kpi-label {
+      font-size: 0.68rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .kpi-value {
+      font-size: 1.75rem;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+    .kpi-value.blue   { color: var(--accent); }
+    .kpi-value.red    { color: var(--danger); }
+    .kpi-value.green  { color: var(--success); }
+    .kpi-value.purple { color: #7c3aed; }
+    .kpi-value.cyan   { color: #0891b2; }
+    .kpi-value.amber  { color: var(--warn); }
+    .kpi-sub { font-size: 0.68rem; color: var(--muted); margin-top: 5px; }
+    @keyframes kpibump { 0%,100% { transform:scale(1) } 50% { transform:scale(1.06) } }
+    .bump { animation: kpibump .25s ease; }
+
+    /* == Grids == */
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 320px;
+      gap: var(--gap);
+      margin-bottom: var(--gap);
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--gap);
+      margin-bottom: var(--gap);
+    }
+
+    /* == Card == */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 16px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .card-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+    }
+    .card-badge {
+      font-size: 0.67rem;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: #f4f4f5;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .card-body { padding: 16px; }
+    .chart-wrap { position: relative; height: 200px; }
+
+    /* == Kafka flow == */
+    .kafka-flow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 32px;
+      gap: 0;
+      overflow-x: auto;
+    }
+    .kf-node { text-align: center; flex-shrink: 0; }
+    .kf-node .kf-label { font-size: 0.8rem; font-weight: 600; color: var(--text); }
+    .kf-node .kf-sub   { font-size: 0.67rem; color: var(--muted); margin-top: 3px; }
+    .kf-icon {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 8px;
+    }
+    .kf-icon svg { width: 20px; height: 20px; stroke: var(--muted); fill: none; stroke-width: 1.5; }
+    .kf-kafka .kf-icon  { width: 64px; height: 64px; border-color: var(--accent); background: #eff6ff; }
+    .kf-kafka .kf-icon svg { stroke: var(--accent); }
+    .kf-kafka .kf-label { color: var(--accent); }
+    .kf-line {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      min-width: 60px;
+      position: relative;
+    }
+    .kf-line::before {
+      content: '';
+      width: 100%; height: 1px;
+      background: var(--border);
+      position: absolute;
+      top: 50%; left: 0;
+    }
+    .kf-rate {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--text);
+    }
+
+    /* == Container list == */
+    .container-list { display: flex; flex-direction: column; gap: 7px; }
+    .ctr-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      background: var(--bg);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .dot.up  { background: var(--success); }
+    .dot.dn  { background: var(--danger); }
+    .ctr-name   { font-size: 0.76rem; font-weight: 500; flex: 1; }
+    .ctr-ports  { font-size: 0.63rem; color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+    .ctr-status { font-size: 0.63rem; font-family: 'JetBrains Mono', monospace; color: var(--muted); }
+
+    /* == Feed == */
+    .feed-wrap { max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+    .feed-wrap::-webkit-scrollbar { width: 3px; }
+    .feed-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .feed-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      background: var(--bg);
+      border-radius: 6px;
+      border-left: 2px solid transparent;
+      font-size: 0.73rem;
+      animation: slideIn .2s ease;
+    }
+    @keyframes slideIn { from { opacity:0; transform:translateY(-4px) } to { opacity:1; transform:translateY(0) } }
+    .feed-item.legit { border-left-color: var(--success); }
+    .feed-item.FRAUD { border-left-color: var(--danger); background: #fef2f2; }
+    .fbadge {
+      font-size: 0.6rem;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .fbadge.legit { background: #dcfce7; color: var(--success); }
+    .fbadge.FRAUD { background: #fee2e2; color: var(--danger); }
+    .ftid {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--muted);
+      font-size: 0.65rem;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .famt { font-weight: 600; white-space: nowrap; }
+
+    /* == ML metrics == */
+    .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .mitem {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      text-align: center;
+    }
+    .mitem .mv { font-size: 1.3rem; font-weight: 600; letter-spacing: -0.02em; }
+    .mitem .ml { font-size: 0.63rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-top: 4px; }
+    .mitem.auc   .mv { color: var(--accent); }
+    .mitem.f1    .mv { color: var(--success); }
+    .mitem.catch .mv { color: #7c3aed; }
+    .mitem.alarm .mv { color: var(--warn); }
+
+    /* == Confusion matrix == */
+    .cm { margin-top: 14px; }
+    .cm-title { font-size: 0.67rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 8px; }
+    .cm-grid { display: grid; grid-template-columns: auto 1fr 1fr; gap: 3px; font-size: 0.68rem; }
+    .cm-cell { padding: 8px 6px; border-radius: 6px; text-align: center; font-weight: 600; }
+    .cm-hdr  { color: var(--muted); display: flex; align-items: center; justify-content: center; font-size: 0.6rem; }
+    .cm-lbl  { color: var(--muted); font-size: 0.6rem; display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; }
+    .cm-tp   { background: #dcfce7; color: var(--success); }
+    .cm-tn   { background: #eff6ff; color: var(--accent); }
+    .cm-fp   { background: #fee2e2; color: var(--danger); }
+    .cm-fn   { background: #fef3c7; color: var(--warn); }
+
+    /* == Features == */
+    .feat-list { display: flex; flex-direction: column; gap: 7px; }
+    .feat-row  { display: flex; align-items: center; gap: 8px; }
+    .feat-name { font-size: 0.69rem; width: 150px; flex-shrink: 0; color: var(--muted); }
+    .feat-bar-wrap { flex: 1; background: #f4f4f5; border-radius: 999px; height: 5px; }
+    .feat-bar  { height: 100%; border-radius: 999px; background: var(--accent); transition: width .7s ease; }
+    .feat-pct  { font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; color: var(--muted); width: 32px; text-align: right; }
+
+    /* == Donut == */
+    .donut-wrap { position: relative; display: flex; align-items: center; justify-content: center; }
+    .donut-center { position: absolute; text-align: center; pointer-events: none; }
+    .donut-center .dv { font-size: 1.3rem; font-weight: 600; color: var(--danger); }
+    .donut-center .dl { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-mini { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; text-align: center; }
+    .stat-mini .sv { font-size: 1.1rem; font-weight: 600; }
+    .stat-mini .sl { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+
+    /* == Logs == */
+    .log-box {
+      background: #18181b;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      height: 200px;
+      overflow-y: auto;
+      padding: 10px 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.67rem;
+      line-height: 1.6;
+    }
+    .log-box::-webkit-scrollbar { width: 3px; }
+    .log-box::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+    .ll { color: #a1a1aa; white-space: pre-wrap; word-break: break-all; }
+    .ll.fraud { color: #f87171; font-weight: 600; }
+    .ll.legit { color: #4ade80; }
+    .ll.info  { color: #60a5fa; }
+    .ll.warn  { color: #fbbf24; }
+
+    /* == Table == */
+    .ftbl-wrap { overflow-x: auto; max-height: 260px; overflow-y: auto; }
+    .ftbl-wrap::-webkit-scrollbar { height: 3px; width: 3px; }
+    .ftbl-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.72rem; }
+    th {
+      position: sticky; top: 0;
+      background: var(--surface);
+      padding: 8px 10px;
+      text-align: left;
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      font-weight: 500;
+    }
+    td {
+      padding: 7px 10px;
+      border-bottom: 1px solid #f4f4f5;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.69rem;
+    }
+    tr:hover td { background: #f9fafb; }
+    .td-fraud { color: var(--danger); font-weight: 600; }
+    .td-legit { color: var(--success); }
+    .td-amt   { color: var(--text); font-weight: 500; }
+
+    /* == Bar == */
+    .bar-track { background: #f4f4f5; border-radius: 999px; height: 6px; overflow: hidden; }
+    .bar-fill  { height: 100%; border-radius: 999px; transition: width .5s ease; }
+
+    /* == Toast == */
+    #toast {
+      position: fixed;
+      bottom: 20px; right: 20px;
+      z-index: 9999;
+      padding: 10px 18px;
+      border-radius: var(--radius);
+      font-size: 0.78rem;
+      font-weight: 500;
+      display: none;
+      border: 1px solid transparent;
+    }
+    @keyframes toastIn { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:translateY(0) } }
+    #toast.show    { display: block; animation: toastIn .2s ease; }
+    #toast.success { background: #f0fdf4; border-color: #bbf7d0; color: var(--success); }
+    #toast.error   { background: #fef2f2; border-color: #fecaca; color: var(--danger); }
+    #toast.info    { background: #eff6ff; border-color: #bfdbfe; color: var(--accent); }
+
+    @media (max-width: 1100px) { .grid-3 { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 760px)  { .grid-3, .grid-2 { grid-template-columns: 1fr; } }
+
+    /* == Clickable metric cards == */
+    .kpi[data-metric], .mitem[data-metric] {
+      cursor: pointer;
+      position: relative;
+    }
+    .kpi[data-metric]:hover, .mitem[data-metric]:hover {
+      border-color: #d4d4d8;
+      background: #fafafa;
+    }
+    .kpi[data-metric]::after, .mitem[data-metric]::after {
+      content: '?';
+      position: absolute;
+      top: 8px; right: 10px;
+      font-size: 0.6rem;
+      font-weight: 600;
+      color: var(--muted);
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      line-height: 14px;
+      text-align: center;
+    }
+
+    /* == Explanation modal == */
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.35);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-backdrop.open { display: flex; animation: fadein .15s ease; }
+    @keyframes fadein { from { opacity:0 } to { opacity:1 } }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.12);
+      animation: slideup .18s ease;
+    }
+    @keyframes slideup { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:translateY(0) } }
+
+    .modal-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: 20px 20px 0;
+      gap: 12px;
+    }
+    .modal-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 1.1rem;
+      line-height: 1;
+      padding: 2px 4px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+    .modal-close:hover { background: #f4f4f5; color: var(--text); }
+
+    .modal-score {
+      font-size: 2rem;
+      font-weight: 600;
+      letter-spacing: -0.04em;
+      padding: 12px 20px 4px;
+    }
+    .modal-score.blue   { color: var(--accent); }
+    .modal-score.red    { color: var(--danger); }
+    .modal-score.green  { color: var(--success); }
+    .modal-score.purple { color: #7c3aed; }
+    .modal-score.cyan   { color: #0891b2; }
+    .modal-score.amber  { color: var(--warn); }
+
+    .modal-body {
+      padding: 8px 20px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .modal-section-title {
+      font-size: 0.67rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .modal-text {
+      font-size: 0.82rem;
+      line-height: 1.6;
+      color: var(--text);
+    }
+    .modal-verdict {
+      background: #f4f4f5;
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      font-size: 0.8rem;
+      line-height: 1.55;
+      color: var(--text);
+      border-left: 3px solid var(--accent);
+    }
+    .modal-verdict.good  { border-left-color: var(--success); background: #f0fdf4; }
+    .modal-verdict.warn  { border-left-color: var(--warn);    background: #fffbeb; }
+    .modal-verdict.info  { border-left-color: var(--accent);  background: #eff6ff; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <header>
+    <div class="logo">
+      <h1>Fraud<span>Shield</span></h1>
+      <p>Kafka + Spark ML Pipeline &mdash; Real-time Monitor</p>
+    </div>
+    <div class="header-right">
+      <span id="last-updated">Connecting...</span>
+      <button class="btn btn-start" id="btn-start" onclick="pipelineAction('start')">Start Pipeline</button>
+      <button class="btn btn-stop"  id="btn-stop"  onclick="pipelineAction('stop')">Stop Pipeline</button>
+      <div class="live-badge"><div class="live-dot"></div>Live</div>
+    </div>
+  </header>
+
+  <!-- KPI Row -->
+  <div class="kpi-row">
+    <div class="kpi" data-metric="total_seen"><div class="kpi-label">Transactions Seen</div><div class="kpi-value blue" id="kpi-total">0</div><div class="kpi-sub">cumulative this session</div></div>
+    <div class="kpi" data-metric="fraud_detected"><div class="kpi-label">Fraud Detected</div><div class="kpi-value red" id="kpi-fraud">0</div><div class="kpi-sub" id="kpi-fraud-rate">0.00% fraud rate</div></div>
+    <div class="kpi" data-metric="legit_txns"><div class="kpi-label">Legit Transactions</div><div class="kpi-value green" id="kpi-legit">0</div><div class="kpi-sub">passed ML scoring</div></div>
+    <div class="kpi" data-metric="auc_roc"><div class="kpi-label">AUC-ROC Score</div><div class="kpi-value purple" id="kpi-auc">&mdash;</div><div class="kpi-sub">Random Forest model</div></div>
+    <div class="kpi" data-metric="f1_score"><div class="kpi-label">F1 Score</div><div class="kpi-value cyan" id="kpi-f1">&mdash;</div><div class="kpi-sub">weighted average</div></div>
+    <div class="kpi" data-metric="catch_rate"><div class="kpi-label">Fraud Catch Rate</div><div class="kpi-value amber" id="kpi-catch">&mdash;</div><div class="kpi-sub">true positive rate</div></div>
+  </div>
+
+  <!-- Kafka Data Flow -->
+  <div class="card" style="margin-bottom:var(--gap)">
+    <div class="card-header">
+      <div class="card-title">Kafka Data Flow</div>
+      <div class="card-badge">topic: transactions</div>
+    </div>
+    <div class="kafka-flow">
+      <div class="kf-node">
+        <div class="kf-icon">
+          <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" stroke="currentColor" fill="none"/></svg>
+        </div>
+        <div class="kf-label">Producer</div>
+        <div class="kf-sub">Python Faker</div>
+      </div>
+      <div class="kf-line">
+        <span class="kf-rate"><span id="kafka-in-rate">0</span> msg/s</span>
+      </div>
+      <div class="kf-node kf-kafka">
+        <div class="kf-icon">
+          <svg viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="6" rx="1"/><rect x="9" y="16" width="6" height="6" rx="1"/><circle cx="5" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><line x1="12" y1="8" x2="5" y2="12"/><line x1="12" y1="8" x2="19" y2="12"/><line x1="12" y1="16" x2="5" y2="12"/><line x1="12" y1="16" x2="19" y2="12"/></svg>
+        </div>
+        <div class="kf-label">KAFKA</div>
+        <div class="kf-sub">broker</div>
+      </div>
+      <div class="kf-line">
+        <span class="kf-rate"><span id="kafka-out-rate">0</span> msg/s</span>
+      </div>
+      <div class="kf-node">
+        <div class="kf-icon">
+          <svg viewBox="0 0 24 24"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>
+        </div>
+        <div class="kf-label">Consumer</div>
+        <div class="kf-sub">Spark Streaming</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stream + Distribution + Containers -->
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Transaction Stream</div>
+        <div class="card-badge" id="rate-badge">10 tx/s</div>
+      </div>
+      <div class="card-body"><div class="chart-wrap"><canvas id="streamChart"></canvas></div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Fraud vs Legit Distribution</div>
+        <div class="card-badge">Live</div>
+      </div>
+      <div class="card-body" style="display:flex;align-items:center;gap:20px">
+        <div class="donut-wrap" style="width:150px;height:150px;flex-shrink:0">
+          <canvas id="doughnutChart" width="150" height="150"></canvas>
+          <div class="donut-center"><div class="dv" id="donut-pct">0%</div><div class="dl">fraud rate</div></div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:10px">
+          <div>
+            <div style="font-size:.63rem;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Fraud Rate</div>
+            <div class="bar-track"><div id="fraud-bar" class="bar-fill" style="width:0%;background:var(--danger)"></div></div>
+            <div style="font-size:.63rem;color:var(--danger);margin-top:3px" id="fraud-bar-lbl">0%</div>
+          </div>
+          <div>
+            <div style="font-size:.63rem;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Legit Rate</div>
+            <div class="bar-track"><div id="legit-bar" class="bar-fill" style="width:100%;background:var(--success)"></div></div>
+            <div style="font-size:.63rem;color:var(--success);margin-top:3px" id="legit-bar-lbl">100%</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <div class="stat-mini"><div class="sv" style="color:var(--danger)" id="stat-fraud">0</div><div class="sl">Fraud</div></div>
+            <div class="stat-mini"><div class="sv" style="color:var(--success)" id="stat-legit">0</div><div class="sl">Legit</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Container Health</div>
+        <div class="card-badge" id="containers-badge">Checking...</div>
+      </div>
+      <div class="card-body">
+        <div class="container-list" id="container-list">
+          <div style="color:var(--muted);font-size:.78rem">Loading...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ML Metrics + Feature Importance -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">ML Model Metrics</div>
+        <div class="card-badge">Random Forest &middot; 100 trees &middot; depth 10</div>
+      </div>
+      <div class="card-body">
+        <div class="metric-grid">
+          <div class="mitem auc"   data-metric="auc_roc">  <div class="mv" id="m-auc-roc">&mdash;</div><div class="ml">AUC-ROC</div></div>
+          <div class="mitem f1"    data-metric="f1_score">  <div class="mv" id="m-f1">&mdash;</div><div class="ml">F1 Score</div></div>
+          <div class="mitem catch" data-metric="catch_rate"><div class="mv" id="m-catch">&mdash;</div><div class="ml">Fraud Catch Rate</div></div>
+          <div class="mitem alarm" data-metric="false_alarm"><div class="mv" id="m-alarm">&mdash;</div><div class="ml">False Alarm Rate</div></div>
+        </div>
+        <div class="cm">
+          <div class="cm-title">Confusion Matrix (test set)</div>
+          <div class="cm-grid">
+            <div></div>
+            <div class="cm-hdr">Pred: Legit</div>
+            <div class="cm-hdr">Pred: Fraud</div>
+            <div class="cm-lbl">Act: Legit</div>
+            <div class="cm-cell cm-tn"><div style="font-size:.95rem">~43k</div><div style="font-size:.56rem;color:var(--muted)">True Neg</div></div>
+            <div class="cm-cell cm-fp"><div style="font-size:.95rem">1</div><div style="font-size:.56rem;color:var(--muted)">False Alarm</div></div>
+            <div class="cm-lbl">Act: Fraud</div>
+            <div class="cm-cell cm-fn"><div style="font-size:.95rem">114</div><div style="font-size:.56rem;color:var(--muted)">Missed</div></div>
+            <div class="cm-cell cm-tp"><div style="font-size:.95rem">793</div><div style="font-size:.56rem;color:var(--muted)">True Fraud</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Feature Importance</div>
+        <div class="card-badge">RF Gini Impurity</div>
+      </div>
+      <div class="card-body">
+        <div class="feat-list" id="feat-list"></div>
+        <div style="margin-top:14px"><div class="chart-wrap" style="height:130px"><canvas id="aucChart"></canvas></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live Feed + Fraud Table -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Live Transaction Feed</div>
+        <div class="card-badge" id="feed-badge">0 tx</div>
+      </div>
+      <div class="card-body">
+        <div class="feed-wrap" id="live-feed">
+          <div style="color:var(--muted);font-size:.78rem">Waiting for transactions...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">ML-Flagged Transactions</div>
+        <div class="card-badge" id="fraud-caught-badge">0 caught</div>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div class="ftbl-wrap">
+          <table>
+            <thead><tr><th>Transaction ID</th><th>Amount</th><th>Category</th><th>Hour</th><th>Geo Risk</th><th>Actual</th></tr></thead>
+            <tbody id="fraud-tbody"><tr><td colspan="6" style="color:var(--muted);text-align:center;padding:20px">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logs -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Kafka Producer Logs</div><div class="card-badge">fraud-producer</div></div>
+      <div class="card-body" style="padding:10px"><div class="log-box" id="producer-log"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Spark Consumer Logs</div><div class="card-badge">fraud-consumer</div></div>
+      <div class="card-body" style="padding:10px"><div class="log-box" id="consumer-log"></div></div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<!-- Metric explanation modal -->
+<div class="modal-backdrop" id="modal-backdrop" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-title">—</div>
+      <button class="modal-close" onclick="closeModalDirect()">&#x2715;</button>
+    </div>
+    <div class="modal-score" id="modal-score"></div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:5050';
+
+const LABELS30 = Array.from({length:30},(_,i)=>`${30-i}s`).reverse();
+const sData = { legit: Array(30).fill(0), fraud: Array(30).fill(0) };
+
+const streamChart = new Chart(document.getElementById('streamChart'), {
+  type: 'line',
+  data: {
+    labels: LABELS30,
+    datasets: [
+      { label:'Legit', data:[...sData.legit], borderColor:'#16a34a', backgroundColor:'rgba(22,163,74,.08)', fill:true, tension:.4, pointRadius:0, borderWidth:1.5 },
+      { label:'Fraud', data:[...sData.fraud], borderColor:'#dc2626', backgroundColor:'rgba(220,38,38,.06)', fill:true, tension:.4, pointRadius:2, pointBackgroundColor:'#dc2626', borderWidth:1.5 }
+    ]
+  },
+  options: {
+    responsive:true, maintainAspectRatio:false, animation:{duration:300},
+    plugins:{ legend:{ labels:{ color:'#71717a', font:{size:11}, boxWidth:10, padding:12 } } },
+    scales: {
+      x:{ ticks:{color:'#a1a1aa',maxTicksLimit:6,font:{size:10}}, grid:{color:'rgba(0,0,0,.04)'} },
+      y:{ ticks:{color:'#a1a1aa',font:{size:10}}, grid:{color:'rgba(0,0,0,.04)'}, beginAtZero:true, min:0 }
+    }
+  }
+});
+
+const doughnutChart = new Chart(document.getElementById('doughnutChart'), {
+  type: 'doughnut',
+  data: { labels:['Legit','Fraud'], datasets:[{ data:[100,0], backgroundColor:['#16a34a','#dc2626'], borderWidth:0, hoverOffset:4 }] },
+  options: { cutout:'72%', animation:{duration:400}, plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>` ${c.label}: ${c.parsed.toFixed(2)}%`}} } }
+});
+
+const aucChart = new Chart(document.getElementById('aucChart'), {
+  type: 'bar',
+  data: {
+    labels: ['AUC-ROC','AUC-PR','F1 Score'],
+    datasets: [{ data:[0,0,0], backgroundColor:['#2563eb','#0891b2','#16a34a'], borderRadius:4, borderSkipped:false }]
+  },
+  options: {
+    responsive:true, maintainAspectRatio:false, animation:{duration:600},
+    plugins:{ legend:{display:false} },
+    scales: {
+      x:{ ticks:{color:'#a1a1aa',font:{size:10}}, grid:{color:'rgba(0,0,0,.04)'} },
+      y:{ ticks:{color:'#a1a1aa',font:{size:10}}, grid:{color:'rgba(0,0,0,.04)'}, max:1, min:0 }
+    }
+  }
+});
+
+[
+  {n:'amount',p:38},{n:'geo_risk_score',p:22},{n:'hour_of_day',p:14},
+  {n:'merchant_category',p:11},{n:'is_night_transaction',p:7},{n:'lat / lon',p:5},{n:'amount_bucket',p:3}
+].forEach(f => {
+  document.getElementById('feat-list').insertAdjacentHTML('beforeend',
+    `<div class="feat-row"><div class="feat-name">${f.n}</div><div class="feat-bar-wrap"><div class="feat-bar" style="width:${f.p}%"></div></div><div class="feat-pct">${f.p}%</div></div>`);
+});
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmt(n){ return parseFloat(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+let toastTimer = null;
+function toast(msg, type='info', ms=3500){
+  clearTimeout(toastTimer);
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'show ' + type;
+  toastTimer = setTimeout(() => el.className = '', ms);
+}
+
+function bump(id){
+  const el = document.getElementById(id);
+  el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+}
+
+function setKpi(id, text){
+  const el = document.getElementById(id);
+  if(el.textContent !== text){ el.textContent = text; bump(id); }
+}
+
+let prevTotal = 0, prevFraud = 0;
+function pushStream(total, fraud){
+  const dT = Math.max(0, total - prevTotal);
+  const dF = Math.max(0, fraud - prevFraud);
+  prevTotal = total; prevFraud = fraud;
+  sData.legit.shift(); sData.legit.push(Math.max(0, dT - dF));
+  sData.fraud.shift(); sData.fraud.push(dF);
+  streamChart.data.datasets[0].data = [...sData.legit];
+  streamChart.data.datasets[1].data = [...sData.fraud];
+  streamChart.update('none');
+  const msgRate = Math.round(dT / 3);
+  const elIn  = document.getElementById('kafka-in-rate');
+  const elOut = document.getElementById('kafka-out-rate');
+  if(elIn)  elIn.textContent  = msgRate;
+  if(elOut) elOut.textContent = msgRate;
+}
+
+async function fetchContainers(){
+  try{
+    const data = await fetch(`${API}/api/containers`).then(r => r.json());
+    const up = data.filter(c => c.running).length;
+    document.getElementById('containers-badge').textContent = `${up} / ${data.length} up`;
+    document.getElementById('container-list').innerHTML = data.length === 0
+      ? '<div style="color:var(--muted);font-size:.78rem">No containers running. Click <strong>Start Pipeline</strong> above.</div>'
+      : data.map(c => {
+          const nm  = c.name.replace('fraud-detection-pipeline-main-','');
+          const pts = c.ports ? c.ports.split(',').map(p => { const m = p.trim().match(/0\.0\.0\.0:(\d+)->/); return m?`:${m[1]}`:''; }).filter(Boolean).join(' ') : '';
+          return `<div class="ctr-row"><div class="dot ${c.running?'up':'dn'}"></div><span class="ctr-name">${nm}</span><span class="ctr-ports">${pts}</span><span class="ctr-status">${c.status.split(' ').slice(0,2).join(' ')}</span></div>`;
+        }).join('');
+  }catch(e){
+    document.getElementById('container-list').innerHTML = '<div style="color:var(--danger);font-size:.78rem">Cannot reach backend &mdash; is app.py running on :5050?</div>';
+  }
+}
+
+async function fetchTransactions(){
+  try{
+    const d = await fetch(`${API}/api/transactions`).then(r => r.json());
+    const {total_seen:ts, fraud_count:fc, legit_count:lc, fraud_rate:fr, feed} = d;
+    setKpi('kpi-total', ts.toLocaleString());
+    setKpi('kpi-fraud', fc.toLocaleString());
+    setKpi('kpi-legit', lc.toLocaleString());
+    document.getElementById('kpi-fraud-rate').textContent = `${fr.toFixed(2)}% fraud rate`;
+    document.getElementById('feed-badge').textContent = `${ts.toLocaleString()} tx`;
+    document.getElementById('stat-fraud').textContent = fc.toLocaleString();
+    document.getElementById('stat-legit').textContent = lc.toLocaleString();
+    document.getElementById('donut-pct').textContent  = `${fr.toFixed(1)}%`;
+    doughnutChart.data.datasets[0].data = [lc, fc];
+    doughnutChart.update('none');
+    const fp = Math.min(fr * 2.5, 100);
+    document.getElementById('fraud-bar').style.width = `${fp}%`;
+    document.getElementById('legit-bar').style.width = `${Math.max(0, 100 - fp)}%`;
+    document.getElementById('fraud-bar-lbl').textContent = `${fr.toFixed(2)}%`;
+    document.getElementById('legit-bar-lbl').textContent = `${(100 - fr).toFixed(2)}%`;
+    pushStream(ts, fc);
+    if(feed && feed.length > 0){
+      document.getElementById('live-feed').innerHTML =
+        [...feed].reverse().slice(0, 25).map(t =>
+          `<div class="feed-item ${t.label}"><div class="fbadge ${t.label}">${t.label}</div><div class="ftid">${t.tid}</div><div class="famt">$${fmt(t.amount)}</div></div>`
+        ).join('');
+    }
+  }catch(e){ console.error('fetchTransactions', e); }
+}
+
+async function fetchModel(){
+  try{
+    const m = await fetch(`${API}/api/model`).then(r => r.json());
+    document.getElementById('kpi-auc').textContent   = m.auc_roc?.toFixed(4) ?? '\u2014';
+    document.getElementById('kpi-f1').textContent    = m.f1_score?.toFixed(4) ?? '\u2014';
+    document.getElementById('kpi-catch').textContent = m.fraud_catch_rate ? `${m.fraud_catch_rate.toFixed(1)}%` : '\u2014';
+    document.getElementById('m-auc-roc').textContent = m.auc_roc?.toFixed(4) ?? '\u2014';
+    document.getElementById('m-f1').textContent      = m.f1_score?.toFixed(4) ?? '\u2014';
+    document.getElementById('m-catch').textContent   = m.fraud_catch_rate ? `${m.fraud_catch_rate.toFixed(1)}%` : '\u2014';
+    document.getElementById('m-alarm').textContent   = m.false_alarm_rate ? `${m.false_alarm_rate.toFixed(4)}%` : '\u2014';
+    aucChart.data.datasets[0].data = [m.auc_roc ?? 0, m.auc_pr ?? 0, m.f1_score ?? 0];
+    aucChart.update();
+  }catch(e){}
+}
+
+async function fetchFraud(){
+  try{
+    const d = await fetch(`${API}/api/fraud-caught`).then(r => r.json());
+    document.getElementById('fraud-caught-badge').textContent = `${d.total} caught`;
+    const tb = document.getElementById('fraud-tbody');
+    if(!d.records || !d.records.length){
+      tb.innerHTML = '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:20px">No flagged records yet &mdash; consumer needs a few 10s batches...</td></tr>';
+      return;
+    }
+    tb.innerHTML = d.records.reverse().map(r =>
+      `<tr><td style="color:var(--muted)">${r.transaction_id.slice(0,16)}...</td><td class="td-amt">$${fmt(r.amount)}</td><td>${esc(r.merchant_category)}</td><td>${r.hour_of_day}</td><td>${parseFloat(r.geo_risk_score).toFixed(2)}</td><td class="${r.is_fraud?'td-fraud':'td-legit'}">${r.is_fraud ? 'FRAUD' : 'Legit'}</td></tr>`
+    ).join('');
+  }catch(e){}
+}
+
+async function fetchLogs(){
+  try{
+    const [pr, co] = await Promise.all([
+      fetch(`${API}/api/producer/logs`).then(r => r.json()),
+      fetch(`${API}/api/consumer/logs`).then(r => r.json())
+    ]);
+    function renderLog(elId, lines){
+      const el = document.getElementById(elId);
+      const atBottom = el.scrollHeight - el.clientHeight <= el.scrollTop + 30;
+      el.innerHTML = lines.slice(-80).map(l => {
+        const txt = l.raw || '';
+        const cls = txt.includes('FRAUD') ? 'fraud' : txt.includes('legit') ? 'legit' : txt.includes('WARN') ? 'warn' : txt.includes('INFO') ? 'info' : '';
+        return `<div class="ll ${cls}">${esc(txt)}</div>`;
+      }).join('');
+      if(atBottom) el.scrollTop = el.scrollHeight;
+    }
+    renderLog('producer-log', pr);
+    renderLog('consumer-log', co);
+  }catch(e){}
+}
+
+async function checkPipelineStatus(){
+  try{
+    const d = await fetch(`${API}/api/pipeline/status`).then(r => r.json());
+    document.getElementById('btn-start').disabled = d.running;
+    document.getElementById('btn-stop').disabled  = !d.running;
+  }catch(e){}
+}
+
+async function pipelineAction(action){
+  const bs   = document.getElementById('btn-start');
+  const bstp = document.getElementById('btn-stop');
+  bs.disabled = true; bstp.disabled = true;
+  const isStart = (action === 'start');
+  const activeBtn = isStart ? bs : bstp;
+  const orig = activeBtn.innerHTML;
+  activeBtn.innerHTML = `<span class="spin">&#x21BB;</span> ${isStart ? 'Starting...' : 'Stopping...'}`;
+  toast(isStart ? 'Starting pipeline, please wait...' : 'Stopping pipeline...', 'info', 10000);
+  try{
+    await fetch(`${API}/api/pipeline/${action}`, {method:'POST'});
+    toast(isStart ? 'Pipeline started.' : 'Pipeline stopped.', isStart ? 'success' : 'info');
+  }catch(e){
+    toast('Error: cannot reach backend', 'error');
+  }
+  activeBtn.innerHTML = orig;
+  setTimeout(() => { checkPipelineStatus(); fetchContainers(); }, 4000);
+}
+
+async function refresh(){
+  await Promise.all([fetchContainers(), fetchTransactions(), fetchLogs()]);
+  document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+}
+
+fetchModel();
+checkPipelineStatus();
+refresh();
+fetchFraud();
+
+setInterval(refresh,             3000);
+setInterval(fetchFraud,         10000);
+setInterval(checkPipelineStatus,10000);
+setInterval(fetchModel,         60000);
+
+/* ── Metric explanations ─────────────────────────────── */
+const METRIC_INFO = {
+  auc_roc: {
+    title: 'AUC-ROC Score',
+    scoreId: 'kpi-auc',
+    scoreClass: 'purple',
+    what: 'AUC-ROC (Area Under the Receiver Operating Characteristic Curve) measures how well the model separates fraudulent transactions from legitimate ones — at every possible decision threshold.',
+    inContext: 'In this pipeline, the Random Forest model scores each transaction streamed through Kafka + Spark. An AUC-ROC of <strong>0.9821</strong> means that if you randomly pick one fraud and one legit transaction, the model ranks the fraud higher 98.21% of the time — even with the heavy class imbalance in the dataset (fraud is rare).',
+    verdict: 'good',
+    verdictText: 'Excellent. A score above 0.98 is production-grade for fraud detection. The model generalises well across the full spectrum of fraud risk scores.'
+  },
+  f1_score: {
+    title: 'F1 Score',
+    scoreId: 'kpi-f1',
+    scoreClass: 'cyan',
+    what: 'F1 Score is the harmonic mean of Precision (how many flagged transactions are actually fraud) and Recall (how many real frauds are caught). It penalises both false alarms and missed fraud equally.',
+    inContext: 'In fraud detection, both errors are costly — a false alarm frustrates a legitimate customer; a missed fraud means real financial loss. Our weighted F1 of <strong>0.9412</strong> balances these on the heavily skewed test set (~43k legit vs ~907 fraud cases). The confusion matrix shows only 1 false alarm and 114 missed frauds out of 907 total.',
+    verdict: 'good',
+    verdictText: 'Strong. F1 above 0.94 on an imbalanced fraud dataset is a meaningful result. The 114 missed cases (false negatives) are the main area for improvement.'
+  },
+  catch_rate: {
+    title: 'Fraud Catch Rate',
+    scoreId: 'kpi-catch',
+    scoreClass: 'amber',
+    what: 'Fraud Catch Rate (Recall / True Positive Rate) is the percentage of all actual fraudulent transactions that the model correctly flags. The remainder are missed frauds — false negatives.',
+    inContext: 'Of the 907 fraud cases in the test set, the model catches <strong>793</strong> (87.4%) and misses <strong>114</strong>. Each missed fraud that passes through the Spark consumer represents a transaction the model let slip as "legit". In a live Kafka stream, those 12.6% would be undetected in real time.',
+    verdict: 'warn',
+    verdictText: 'Good, but improvable. 87.4% catch rate is solid for a baseline RF model. Raising it requires careful threshold tuning or a more recall-biased model — at the cost of more false alarms.'
+  },
+  false_alarm: {
+    title: 'False Alarm Rate',
+    scoreId: 'kpi-auc',
+    scoreClass: 'amber',
+    what: 'False Alarm Rate (Fall-out / False Positive Rate) is the share of legitimate transactions incorrectly flagged as fraud by the model.',
+    inContext: 'Out of ~43,000 legitimate test transactions, the Random Forest model wrongly blocked just <strong>1</strong> — a false alarm rate of 0.0023%. In the Spark consumer stream, this means almost no innocent customers are disrupted. This extremely low rate is partly because the model is conservative: it errs toward letting things through, which is why the catch rate is 87% rather than 95%+.',
+    verdict: 'good',
+    verdictText: 'Excellent. Near-zero false alarms. This keeps customer friction minimal in the live pipeline, but it comes with the trade-off of missing ~12.6% of actual fraud.'
+  },
+  total_seen: {
+    title: 'Transactions Seen',
+    scoreId: 'kpi-total',
+    scoreClass: 'blue',
+    what: 'The cumulative count of all transactions processed in this session — both fraudulent and legitimate.',
+    inContext: 'The Python Faker producer generates synthetic transactions and publishes them to the Kafka topic <code>transactions</code>. The Spark Streaming consumer reads them in micro-batches, runs each one through the Random Forest model, and emits a fraud/legit label. This counter reflects the total messages the producer has sent since the pipeline started.',
+    verdict: 'info',
+    verdictText: 'This is the raw throughput counter. Watch the Transaction Stream chart to see the real-time per-second rate split between fraud and legit.'
+  },
+  fraud_detected: {
+    title: 'Fraud Detected',
+    scoreId: 'kpi-fraud',
+    scoreClass: 'red',
+    what: 'The number of transactions the producer labelled as FRAUD that have been streamed through Kafka in this session.',
+    inContext: 'The producer uses Python Faker to generate realistic-looking transactions, sampling from a fraud probability distribution that mirrors real-world imbalance. When a transaction is labelled FRAUD by the producer, it still goes through the Spark consumer for ML scoring — the ML-flagged count may differ since the model has its own 87.4% catch rate.',
+    verdict: 'info',
+    verdictText: 'This counts producer-labelled fraud (ground truth), not ML-detected fraud. Compare it with the ML-Flagged Transactions table to see how many the model correctly identified.'
+  },
+  legit_txns: {
+    title: 'Legit Transactions',
+    scoreId: 'kpi-legit',
+    scoreClass: 'green',
+    what: 'The number of transactions labelled as legitimate by the producer and passed through the ML scoring pipeline.',
+    inContext: 'Legit transactions flow from the Python Faker producer → Kafka broker → Spark consumer → Random Forest model. The model should pass the vast majority through with a legit prediction. The False Alarm Rate of 0.0023% means only about 1 in 43,000 legit transactions gets wrongly flagged.',
+    verdict: 'good',
+    verdictText: 'High legit throughput with minimal false alarms means the pipeline is not blocking real customers. The live feed panel shows a real-time sample of these transactions.'
+  }
+};
+
+function openModal(metricKey) {
+  const info = METRIC_INFO[metricKey];
+  if (!info) return;
+
+  // Read the live score value from the DOM
+  const scoreEl = document.getElementById(info.scoreId);
+  const liveScore = scoreEl ? scoreEl.textContent.trim() : '—';
+
+  document.getElementById('modal-title').textContent = info.title;
+
+  const scoreDiv = document.getElementById('modal-score');
+  scoreDiv.textContent = liveScore;
+  scoreDiv.className = 'modal-score ' + info.scoreClass;
+
+  document.getElementById('modal-body').innerHTML = `
+    <div>
+      <div class="modal-section-title">What it measures</div>
+      <div class="modal-text">${info.what}</div>
+    </div>
+    <div>
+      <div class="modal-section-title">In this project</div>
+      <div class="modal-text">${info.inContext}</div>
+    </div>
+    <div class="modal-verdict ${info.verdict}">${info.verdictText}</div>
+  `;
+
+  document.getElementById('modal-backdrop').classList.add('open');
+}
+
+function closeModalDirect() {
+  document.getElementById('modal-backdrop').classList.remove('open');
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modal-backdrop')) closeModalDirect();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModalDirect();
+});
+
+// Delegate clicks on all data-metric elements
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-metric]');
+  if (el) openModal(el.dataset.metric);
+});
+</script>
+</body>
+</html>

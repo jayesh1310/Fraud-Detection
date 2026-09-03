@@ -1,9 +1,42 @@
+# Data files
 *.csv
 *.parquet
+
+# Jupyter
 .ipynb_checkpoints/
+
+# ML model artifacts
 fraud_rf_model/
+
+# Runtime output (flagged fraud copied from Docker containers)
 temp_flagged/
+temp_flagged_dash/
+
+# Training data
 training_data/
+
+# Python
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.venv/
+
+# Environment
+.env
+
+# Logs
 *.log
+
+# OS
 .DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Project-specific generated files
+PROJECT_EXPLANATION.md

@@ -110,7 +110,7 @@ def main():
         .format("parquet")
         .option("path", OUTPUT_PATH)
         .option("checkpointLocation", CHECKPOINT_PATH)
-        .trigger(processingTime="10 seconds")
+        .trigger(processingTime="3 seconds")
         .start()
     )
 
