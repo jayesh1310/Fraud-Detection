@@ -118,11 +118,6 @@ fraud-detection/
 ├── temp_flagged/                        # Local copy of fraud-flagged Parquet output
 ├── temp_flagged_dash/                   # Dashboard's copy of fraud-flagged output
 │
-├── FraudDetection_Presentation.pdf      # Project presentation slides
-├── PROJECT_EXPLANATION.md               # High-level project explanation
-├── PROJECT_EXPLANATION_DETAILED.txt     # Exhaustive technical documentation
-├── KAFKA_DOCKER_CONTAINERS_EXPLANATION.txt  # Docker & Kafka educational guide
-├── PRESENTATION_FEEDBACK.txt            # Presentation review & feedback
 ├── launch_jupyter.bat                   # Windows batch script to launch Jupyter Notebook
 └── .gitignore
 ```
@@ -304,11 +299,7 @@ This reads `training_data_clean.parquet`, runs feature engineering, trains the 6
 
 ## Documentation
 
-| File | Description |
-|------|-------------|
-| [PROJECT_EXPLANATION.md](PROJECT_EXPLANATION.md) | High-level architecture & concepts guide |
-| [PROJECT_EXPLANATION_DETAILED.txt](PROJECT_EXPLANATION_DETAILED.txt) | Exhaustive line-by-line technical breakdown |
-| [KAFKA_DOCKER_CONTAINERS_EXPLANATION.txt](KAFKA_DOCKER_CONTAINERS_EXPLANATION.txt) | Docker & Kafka educational reference |
+
 | [SCHEMA.md](fraud-detection-pipeline-main/SCHEMA.md) | Transaction schema documentation |
 
 ---
